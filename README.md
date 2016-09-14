@@ -50,7 +50,7 @@ Your `build.sbt` already defines a few projects:
 
 ## Files and Directories
 
-`/build`
+`/scripts`
 : The place where all your build, release, deploy scripts will go. Usually these will be run by jenkins.
 
 `scala-style.xml`
