@@ -7,6 +7,7 @@ import com.typesafe.sbt.SbtScalariform
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 import org.scalastyle.sbt.ScalastylePlugin.{scalastyleConfig, scalastyle}
 
+val projectName = "your-project"
 /**
  * Default build settings
  */
@@ -53,7 +54,7 @@ lazy val scoverageSettings = Seq(
   ScoverageKeys.coverageFailOnMinimum := false,
   ScoverageKeys.coverageHighlighting := scalaBinaryVersion.value != "2.10"
   // uncomment and add your excluded packages if needed
-  // ScoverageKeys.coverageExcludedPackages := "domino\\.bench\\..*",
+  // ScoverageKeys.coverageExcludedPackages := "domino\\.benchmark\\..*",
 )
 
 lazy val noPublishSettings = Seq(
@@ -87,18 +88,20 @@ lazy val codeStyleSettings = codeFormattingSettings ++ scalastyleSettings
 
 lazy val licenseSettings = Defaults.coreDefaultSettings
 
-lazy val dominoSettings = buildSettings ++ commonSettings ++ scoverageSettings ++ codeStyleSettings
+lazy val allSettings = buildSettings ++ commonSettings ++ scoverageSettings ++ codeStyleSettings
 
 /**
  * Test dependencies
  *
- * ScalaTest - a well documented, non-surprising testing framework with great community support
+ * ScalaTest - a well documented, non-surprising test framework with great community support
  * Scalactic - ScalaTest's sister library focued on quality through types
  *
  */
-lazy val testingDependencies = Seq(
+lazy val testDependencies = Seq(
   libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.0",
-  libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test")
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test",
+  libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.13.2"
+)
 
 /**
  * Common compiler options
@@ -135,30 +138,69 @@ lazy val warnUnusedImport = Seq(
 )
 
 lazy val tests = project
-  .settings(moduleName := "tests")
-  .settings(dominoSettings)
+  .settings(moduleName := s"$projectName-tests")
+  .settings(allSettings)
   .settings(noPublishSettings)
-  .settings(testingDependencies)
+  .settings(testDependencies)
+  .dependsOn(core, server, client)
 
-lazy val bench = project
-  .settings(moduleName := "bench")
-  .settings(dominoSettings)
+lazy val benchmark = project
+  .settings(moduleName := s"$projectName-benchmark")
   .enablePlugins(JmhPlugin)
+  .settings(allSettings)
+  .settings(noPublishSettings)
+  .settings(
+    javaOptions in run ++= Seq(
+      "-Djava.net.preferIPv4Stack=true",
+      "-XX:+AggressiveOpts",
+      "-XX:+UseParNewGC",
+      "-XX:+UseConcMarkSweepGC",
+      "-XX:+CMSParallelRemarkEnabled",
+      "-XX:+CMSClassUnloadingEnabled",
+      "-XX:ReservedCodeCacheSize=128m",
+      "-XX:MaxPermSize=1024m",
+      "-Xss8M",
+      "-Xms512M",
+      "-XX:SurvivorRatio=128",
+      "-XX:MaxTenuringThreshold=0",
+      "-Xss8M",
+      "-Xms512M",
+      "-Xmx2G",
+      "-server"
+    )
+  )
+  .dependsOn(core, server, client)
+
 
 lazy val license = project.in(file("license"))
   .settings(licenseSettings:_*)
   .dependsOn(
-    domino % "compile->compile"
+    all % "compile->compile"
   )
 
-lazy val domino = project.in(file("."))
-  .settings(moduleName := "domino")
-  .settings(noPublishSettings)
-  .settings(dominoSettings)
-  .dependsOn(tests % "test-internal -> test", bench % "compile-internal;test-internal -> test")
+lazy val core = project
+  .settings(moduleName := s"$projectName-core")
+  .settings(allSettings)
 
-// change "domino/test" to the name of your project, e.g. projectname/test
-addCommandAlias("validate", ";clean;scalastyle;domino/test")
+lazy val server = project
+  .settings(moduleName := s"$projectName-server")
+  .settings(allSettings)
+  .dependsOn(core)
+
+lazy val client = project
+  .settings(moduleName := s"$projectName-client")
+  .settings(allSettings)
+  .dependsOn(core)
+
+lazy val all = project.in(file("."))
+  .settings(moduleName := s"$projectName")
+  .settings(noPublishSettings)
+  .settings(allSettings)
+  .aggregate(core, server, client, tests, benchmark)
+  .dependsOn(core, server, client, tests % "test-internal -> test", benchmark % "compile-internal;test-internal -> test")
+
+// change "all/test" to the name of your project, e.g. projectname/test
+addCommandAlias("validate", ";clean;scalastyle;all/test")
 
 lazy val dominoReleaseProcess = Seq(
   releaseProcess := Seq[ReleaseStep](
