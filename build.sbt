@@ -6,14 +6,18 @@ import scalariform.formatter.preferences._
 import com.typesafe.sbt.SbtScalariform
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 import org.scalastyle.sbt.ScalastylePlugin.{scalastyleConfig, scalastyle}
+import sbtunidoc.Plugin.UnidocKeys._
 
 val projectName = "your-project"
+val organizationName = "org.yourcompany"
+
 /**
  * Default build settings
  */
 lazy val buildSettings = Seq(
-  organization := "com.dominodatalab",
-  scalaVersion := "2.11.8"// uncomment if you need cross scala versions, crossScalaVersions := Seq("2.10.6", "2.11.8")
+  organization := organizationName,
+  scalaVersion := "2.11.8"
+  // uncomment if you need cross scala versions, crossScalaVersions := Seq("2.10.6", "2.11.8")
 )
 
 /**
@@ -52,9 +56,9 @@ lazy val tagName = Def.setting{
 lazy val scoverageSettings = Seq(
   ScoverageKeys.coverageMinimum := 80,
   ScoverageKeys.coverageFailOnMinimum := false,
-  ScoverageKeys.coverageHighlighting := scalaBinaryVersion.value != "2.10"
+  ScoverageKeys.coverageHighlighting := true
   // uncomment and add your excluded packages if needed
-  // ScoverageKeys.coverageExcludedPackages := "domino\\.benchmark\\..*",
+  // ScoverageKeys.coverageExcludedPackages := "com\\.yourorg\\.benchmark\\..*",
 )
 
 lazy val noPublishSettings = Seq(
@@ -66,7 +70,7 @@ lazy val noPublishSettings = Seq(
 /**
  * insert your publish settings
 lazy val publishSettings = Seq(
-  homepage := Some(url("https://github.com/cerebrotech/PROJECT.git")),
+  homepage := Some(url("https://github.com/YOURORG/PROJECT.git")),
 ) ++ releaseSettings
 */
 
@@ -88,7 +92,13 @@ lazy val codeStyleSettings = codeFormattingSettings ++ scalastyleSettings
 
 lazy val licenseSettings = Defaults.coreDefaultSettings
 
-lazy val allSettings = buildSettings ++ commonSettings ++ scoverageSettings ++ codeStyleSettings
+lazy val baseSettings = buildSettings ++ commonSettings ++ scoverageSettings ++ codeStyleSettings
+
+lazy val docSettings = site.settings ++ ghpages.settings ++ unidocSettings ++ Seq(
+  site.addMappingsToSiteDir(mappings in (ScalaUnidoc, packageDoc), "docs"),
+  git.remoteRepo := s"git@github.com:YOURORG/YOURREPO.git",
+  unidocProjectFilter in (ScalaUnidoc, unidoc) := inAnyProject -- inProjects(benchmark, test)
+)
 
 /**
  * Test dependencies
@@ -137,9 +147,9 @@ lazy val warnUnusedImport = Seq(
   scalacOptions in (Test, console) <<= (scalacOptions in (Compile, console))
 )
 
-lazy val tests = project
-  .settings(moduleName := s"$projectName-tests")
-  .settings(allSettings)
+lazy val test = project
+  .settings(moduleName := s"$projectName-test")
+  .settings(baseSettings)
   .settings(noPublishSettings)
   .settings(testDependencies)
   .dependsOn(core, server, client)
@@ -147,7 +157,7 @@ lazy val tests = project
 lazy val benchmark = project
   .settings(moduleName := s"$projectName-benchmark")
   .enablePlugins(JmhPlugin)
-  .settings(allSettings)
+  .settings(baseSettings)
   .settings(noPublishSettings)
   .settings(
     javaOptions in run ++= Seq(
@@ -180,29 +190,30 @@ lazy val license = project.in(file("license"))
 
 lazy val core = project
   .settings(moduleName := s"$projectName-core")
-  .settings(allSettings)
+  .settings(baseSettings)
 
 lazy val server = project
   .settings(moduleName := s"$projectName-server")
-  .settings(allSettings)
+  .settings(baseSettings)
   .dependsOn(core)
 
 lazy val client = project
   .settings(moduleName := s"$projectName-client")
-  .settings(allSettings)
+  .settings(baseSettings)
   .dependsOn(core)
 
 lazy val all = project.in(file("."))
   .settings(moduleName := s"$projectName")
   .settings(noPublishSettings)
-  .settings(allSettings)
-  .aggregate(core, server, client, tests, benchmark)
-  .dependsOn(core, server, client, tests % "test-internal -> test", benchmark % "compile-internal;test-internal -> test")
+  .settings(baseSettings)
+  .settings(docSettings)
+  .aggregate(core, server, client, test, benchmark)
+  .dependsOn(core, server, client, test % "test-internal -> test", benchmark % "compile-internal;test-internal -> test")
 
 // change "all/test" to the name of your project, e.g. projectname/test
 addCommandAlias("validate", ";clean;scalastyle;all/test")
 
-lazy val dominoReleaseProcess = Seq(
+lazy val ourReleaseProcess = Seq(
   releaseProcess := Seq[ReleaseStep](
     checkSnapshotDependencies,
     inquireVersions,
