@@ -1,6 +1,8 @@
 # SBT Project Template
 
-This repo is an evolving view into what I think makes the start for a successful project. It does its best to provide some useful and sane defaults for the following:
+This repo is an evolving view into what I think makes the start for a
+successful project. It does its best to provide some useful and sane defaults
+for the following:
 
 1. Modern `built.sbt` and standard, useful plugins
 2. Build/release/deploy scripts for CI to run
@@ -18,6 +20,9 @@ Your `build.sbt` already defines a few projects:
 * `server` -- server code to be deployed
 * `client` -- client code that can be distributed to other projects
 * `all` -- the aggregate project
+
+Each of these projects is its own directory and have dependencies defined in
+the `build.sbt`
 
 ## Default SBT Plugins
 
