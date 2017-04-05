@@ -22,7 +22,7 @@ Your `build.sbt` already defines a few projects:
 * `all` -- the aggregate project
 
 Each of these projects is its own directory and have dependencies defined in
-the `build.sbt`
+the `build.sbt`.
 
 ## Default SBT Plugins
 
